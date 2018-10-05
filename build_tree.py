@@ -7,10 +7,11 @@ class HuffmanTreeNode:
         self.right = None
         self.value = value
         self.huffman = ""
+        self.wordCodeDict = {}
 
 class HuffmanTree:
-    def __init__(self, wordList, vecLength):
-        self.nodeList = [HuffmanTreeNode(word["value"], word["posibility"]) for word in wordList]
+    def __init__(self, wordPosiDict, vecLength):
+        self.nodeList = [HuffmanTreeNode(key, value) for key, value in wordPosiDict]
         self.vecLength = vecLength
         self.root = None
         self.buildTree()
@@ -47,3 +48,15 @@ class HuffmanTree:
             newNode.right = node1
             newNode.left = node2
         return newNode
+
+    def generateCode(self, node):
+        if (node.left is None and node.rgiht is None):
+            self.wordCodeDict[node.value] = node.huffman
+
+        if node.left:
+            node.left.huffman = code.huffman + "1"
+            generateCode(node.left)
+
+        if node.right:
+            node.left.huffman = code.huffman + "0"
+            generateCode(node.right)
