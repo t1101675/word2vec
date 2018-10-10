@@ -7,11 +7,11 @@ class CBOW:
         self.minCount = minCount
         self.vecLength = vecLength
         self.window = window
-        self.eda = 0.05
+        self.eda = 0.025
         self.trainWordList = []
         self.wordPosiDict = {}
         self.wordVecDict = {}
-        self.round = 100
+        self.round = 5
         self.a = 10
         self.train()
 
