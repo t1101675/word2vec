@@ -2,60 +2,76 @@ import build_tree as tree
 import numpy as np
 
 class CBOW:
-    def __init__(self, sentence, minCount = 1, vecLength = 100, window = 5):
+    def __init__(self, sentence, minCount = 1, vecLength = 5, window = 5):
         self.sentence = sentence
         self.minCount = minCount
         self.vecLength = vecLength
         self.window = window
-        self.eda = 1
+        self.eda = 0.1
         self.trainWordList = []
-        self.wordPosiDict = []
+        self.wordPosiDict = {}
         self.wordVecDict = {}
-        self.round = 1
+        self.round = 5
+        self.a = 10
+        self.train()
 
     def train(self):
-        buildWordList()
-        self.tree = tree.HuffmanTree(self.wordList, self.vecLength)
+        self.buildWordList()
+        self.buildTree()
         n = 0
         while n < self.round:
-            for i in range(len(trainWordList)):
-                train1word(i)
+            # print self.wordVecDict["limited"]
+            for i in range(len(self.trainWordList)):
+                # print i
+                self.train1word(i)
+            n += 1
 
     def train1word(self, index):
         w = np.zeros(self.vecLength)
         for i in range(1, self.window):
-            if index + i < len(trainWordList):
-                word = trainWordList[index + i]
-                w = w + wordVecDict[word]
+            if index + i < len(self.trainWordList):
+                word = self.trainWordList[index + i]
+                w = w + self.wordVecDict[word]
             if index - i >= 0:
-                word = trainWordList[index - i]
-                w = w + wordVecDict[word]
+                word = self.trainWordList[index - i]
+                w = w + self.wordVecDict[word]
 
+        w /= 2 * self.window
         e = np.zeros(self.vecLength)
-        code = self.tree.wordCodeDict[trainWordList[index]]
+        code = self.tree.wordCodeDict[self.trainWordList[index]]
         node = self.tree.root
-        q = eda * (1 - int(code[i]) - sig(w * node.value))
         for i in range(len(code)):
+            q = self.eda * (1 - int(code[i]) - self.sig(w * node.value))
+            # print "q: ", q
             if node is None:
                 raise RuntimeError("code length not right")
-            node.value = node.value + q * w
             e = e + q * node.value
+            node.value = node.value + q * w
             if code[i] == "0":
                 node = node.left
             else:
                 node = node.right
 
-    def sig(x):
-        return 1 / (1 + exp(-x))
+        for i in range(1, self.window):
+            if index + i < len(self.trainWordList):
+                word = self.trainWordList[index + i]
+                self.wordVecDict[word] = self.wordVecDict[word] + e
+            if index - i >= 0:
+                word = self.trainWordList[index - i]
+                self.wordVecDict[word] = self.wordVecDict[word] + e
 
-    def buildWordList():
-        trainWordList = sentence.split(" ")
-        for word in trainWordList:
-            if word in wordPosiDict:
-                wordPosiDict[word] += 1
+    def sig(self, x):
+        # print "x: ", x
+        return 1 / (1 + np.exp(-x))
+
+    def buildTree(self):
+        self.tree = tree.HuffmanTree(self.wordPosiDict, self.vecLength)
+
+    def buildWordList(self):
+        self.trainWordList = self.sentence.split(" ")
+        for word in self.trainWordList:
+            if word in self.wordPosiDict:
+                self.wordPosiDict[word] += 1
             else:
-                wordPosiDict[word] = 1
-                wordVecDict[word] = np.random.rand(1, self.vecLength)
-
-
-                
+                self.wordPosiDict[word] = 1
+                self.wordVecDict[word] = np.random.rand(1, self.vecLength)
