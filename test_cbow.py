@@ -2,7 +2,7 @@ import CBOW
 import build_tree
 import os
 
-f = open("../data/word2vec/small_training.txt", 'r')
+f = open("1M_test.in", 'r')
 sentence = f.read()
 # print sentence
 
@@ -11,8 +11,8 @@ model = CBOW.CBOW(sentence)
 
 # print model.trainWordList
 
-for word in model.wordVecDict:
-    print word + ": ", model.wordVecDict[word]
+# for word in model.wordVecDict:
+#     print word + ": ", model.wordVecDict[word]
 
 # for word in model.wordVecDict:
     # print word + ": ", model.wordPosiDict[word]

@@ -41,7 +41,7 @@ class HuffmanTree:
         self.generateCode(self.root)
 
     def merge(self, node1, node2):
-        newNode = HuffmanTreeNode(np.zeros(self.vecLength), node1.posibility + node2.posibility)
+        newNode = HuffmanTreeNode(np.random.rand(1, self.vecLength), node1.posibility + node2.posibility)
         if node1.posibility > node2.posibility:
             newNode.left = node1
             newNode.right = node2

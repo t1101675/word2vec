@@ -2,28 +2,37 @@ import build_tree as tree
 import numpy as np
 
 class CBOW:
-    def __init__(self, sentence, minCount = 1, vecLength = 5, window = 5):
+    def __init__(self, sentence, minCount = 1, vecLength = 20, window = 5):
         self.sentence = sentence
         self.minCount = minCount
         self.vecLength = vecLength
         self.window = window
-        self.eda = 0.1
+        self.eda = 0.05
         self.trainWordList = []
         self.wordPosiDict = {}
         self.wordVecDict = {}
-        self.round = 5
+        self.round = 100
         self.a = 10
         self.train()
 
     def train(self):
         self.buildWordList()
+        print "built word list", len(self.trainWordList), " in all"
         self.buildTree()
+        print "built huffman tree"
         n = 0
         while n < self.round:
-            # print self.wordVecDict["limited"]
+            print self.wordVecDict["limited"]
+            maxLoss = 0
+            count = 0
             for i in range(len(self.trainWordList)):
                 # print i
-                self.train1word(i)
+                loss = self.train1word(i)
+                if (loss > maxLoss):
+                    maxLoss = loss
+                if (loss > 0.04):
+                    count += 1
+            print "round" + str(n) + ": " + "max loss: ", maxLoss, "count: ", count
             n += 1
 
     def train1word(self, index):
@@ -40,13 +49,22 @@ class CBOW:
         e = np.zeros(self.vecLength)
         code = self.tree.wordCodeDict[self.trainWordList[index]]
         node = self.tree.root
+        max_q = 0
         for i in range(len(code)):
-            q = self.eda * (1 - int(code[i]) - self.sig(w * node.value))
-            # print "q: ", q
+            q = self.eda * (1 - int(code[i]) - self.sig(np.inner(w, node.value)))
+            if index == 35:
+                # print "code: ", code[i], "w: ", w, "nodeValue: ", node.value, "inner: ", np.inner(w, node.value)
+                print "code: ", code[i], q, "inner: ", np.inner(w, node.value)
+            # print np.inner(w, node.value)
+            if q > max_q:
+                max_q = q
+
             if node is None:
                 raise RuntimeError("code length not right")
             e = e + q * node.value
             node.value = node.value + q * w
+            # print "q: ", q, "e: ", e, "theta: ", node.value
+
             if code[i] == "0":
                 node = node.left
             else:
@@ -59,6 +77,7 @@ class CBOW:
             if index - i >= 0:
                 word = self.trainWordList[index - i]
                 self.wordVecDict[word] = self.wordVecDict[word] + e
+        return max_q
 
     def sig(self, x):
         # print "x: ", x
