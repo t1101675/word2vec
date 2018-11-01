@@ -17,7 +17,7 @@ class CBOW:
 
     def train(self):
         self.buildWordList()
-        print "built word list", len(self.trainWordList), " in all"
+        print "built word list", len(self.trainWordList), " in all ", len(self.wordVecDict), " after delete min words"
         self.buildTree()
         print "built huffman tree"
         n = 0
@@ -27,27 +27,35 @@ class CBOW:
             maxLoss = 0
             count = 0
             for i in range(len(self.trainWordList)):
-                if i % 100 == 0:
-                    print "[training] No." + str(i) + " word as center", len(self.trainWordList), "in all"
-                loss = self.train1word(i)
-                if (loss > maxLoss):
-                    maxLoss = loss
-                if (loss > 0.04):
-                    count += 1
+                if self.trainWordList[i] in self.wordVecDict:
+                    if i % 100 == 0:
+                        print "[training] No." + str(i) + " word as center", len(self.trainWordList), "in all"
+                    loss = self.train1word(i)
+                    if (loss > maxLoss):
+                        maxLoss = loss
+                    if (loss > 0.04):
+                        count += 1
             # print "round" + str(n) + ": " + "max loss: ", maxLoss, "count: ", count
             n += 1
 
     def train1word(self, index):
         w = np.zeros(self.vecLength)
+        tempNum = 0;
         for i in range(1, self.window):
             if index + i < len(self.trainWordList):
                 word = self.trainWordList[index + i]
-                w = w + self.wordVecDict[word]
+                if word in self.wordVecDict:
+                    w = w + self.wordVecDict[word]
+                    tempNum += 1
             if index - i >= 0:
                 word = self.trainWordList[index - i]
-                w = w + self.wordVecDict[word]
+                if word in self.wordVecDict:
+                    w = w + self.wordVecDict[word]
+                    tempNum += 1
+        if tempNum == 0:
+            return 0
+        w /= tempNum
 
-        w /= 2 * self.window
         e = np.zeros(self.vecLength)
         code = self.tree.wordCodeDict[self.trainWordList[index]]
         node = self.tree.root
@@ -75,10 +83,12 @@ class CBOW:
         for i in range(1, self.window):
             if index + i < len(self.trainWordList):
                 word = self.trainWordList[index + i]
-                self.wordVecDict[word] = self.wordVecDict[word] + e
+                if word in self.wordVecDict:
+                    self.wordVecDict[word] = self.wordVecDict[word] + e
             if index - i >= 0:
                 word = self.trainWordList[index - i]
-                self.wordVecDict[word] = self.wordVecDict[word] + e
+                if word in self.wordVecDict:
+                    self.wordVecDict[word] = self.wordVecDict[word] + e
         return max_q
 
     def sig(self, x):
@@ -98,4 +108,17 @@ class CBOW:
                 self.wordPosiDict[word] += 1
             else:
                 self.wordPosiDict[word] = 1
-                self.wordVecDict[word] = np.random.rand(self.vecLength)
+        self.wordPosiDict = self.deleteMinWords()
+        for word in self.wordPosiDict:
+            self.wordVecDict[word] = np.random.rand(self.vecLength)
+
+    def deleteMinWords(self):
+        temp = sorted(self.wordPosiDict.items(), key = lambda x:x[1], reverse = True)
+        i = 0
+        while (i < len(temp) and temp[i][1] > self.minCount):
+            i += 1
+        temp = temp[0:i];
+        newDict = {}
+        for item in temp:
+            newDict[item[0]] = item[1]
+        return newDict
