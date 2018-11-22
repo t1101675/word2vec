@@ -1,48 +1,51 @@
-import build_tree as tree
 import numpy as np
+import random
 
 EXP_TABLE_SIZE = 1000
 MAX_EXP = 6
 
 class CBOW:
-    def __init__(self, sentence, minCount = 5, vecLength = 200, window = 8):
+    def __init__(self, sentence, minCount = 1, vecLength = 200, window = 5):
         self.sentence = sentence
         self.minCount = minCount
         self.vecLength = vecLength
         self.window = window
         self.startingEda = 0.025
-        self.trainWordList = []
-        self.wordPosiDict = {}
-        self.wordVecDict = {}
         self.round = 1
         self.train_words = 0
+        self.tableSize = 1e8
+        self.table = []
+        self.power = 0.75
+        self.neg = 5
+        self.vacabSize = 0
+        self.trainWordList = []
+        self.wordPosiDict = {}
+        self.wordPosiList = []
+        self.wordVecDict = {}
+        self.wordThetaDict = {}
         self.train()
-
 
     def train(self):
         eda = self.startingEda
         self.buildWordList()
-        print "built word list", len(self.trainWordList), " in all ", len(self.wordVecDict), " after delete min words ", self.train_words, " train words"
-        self.buildTree()
-        print "built huffman tree"
-        n = 0
+        print "build word list", len(self.trainWordList), " in all ", len(self.wordVecDict), " after delete min words ", self.train_words, " train words"
+        self.initUnigramTable()
+        print "generate unigram table"
         word_count = 0
         last_word_count = 0
         word_count_actual = 0
+        n = 0
         while n < self.round:
             print "[training] round #" + str(n)
-            maxLoss = 0
             for i in range(len(self.trainWordList)):
                 if self.trainWordList[i] in self.wordVecDict:
                     if word_count - last_word_count > 10000:
                         word_count_actual += (word_count - last_word_count)
                         last_word_count = word_count
-                        # print word_count_actual, self.round * self.train_words + 1, float(word_count_actual) / (self.round * self.train_words + 1)
                         eda = self.startingEda * (1 - float(word_count_actual) / (self.round * self.train_words + 1))
-                        if (eda < self.startingEda * 0.0001):
+                        if eda < self.startingEda * 0.0001:
                             eda = self.startingEda * 0.0001
                         print "[training] No." + str(i) + " word as center", len(self.trainWordList), "in all, eda = ", eda
-
                     self.train1word(i, eda)
                     word_count += 1
             n += 1
@@ -52,27 +55,26 @@ class CBOW:
         if w is None:
             return
         e = np.zeros(self.vecLength)
-        code = self.tree.wordCodeDict[self.trainWordList[index]]
-        node = self.tree.root
-        for i in range(len(code)):
-            f = w.dot(node.value)
-            if (f <= -MAX_EXP):
-                continue
-            elif (f >= MAX_EXP):
-                continue
+        for d in range(self.neg + 1):
+            targetWord = ""
+            if d == 0:
+                #positive samlpe
+                targetWord = self.trainWordList[index]
+                label = 1
             else:
-                f = self.sig((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))
-            q = eda * (1 - int(code[i]) - f)
-
-            if node is None:
-                raise RuntimeError("code length not right")
-            e = e + q * node.value
-            node.value = node.value + q * w
-
-            if code[i] == "1":
-                node = node.left
+                ran = random.randint(0, self.tableSize - 1)
+                # print ran, len(self.table), self.table[ran], len(self.wordPosiList)
+                targetWord = self.wordPosiList[self.table[ran]][0]
+                label = 0
+            f = w.dot(self.wordThetaDict[targetWord])
+            if f > MAX_EXP:
+                g = (label - 1) * eda
+            elif f < -MAX_EXP:
+                g = (label - 0) * eda
             else:
-                node = node.right
+                g = (label - self.sig((f + MAX_EXP) * (EXP_TABLE_SIZE / MAX_EXP / 2))) * eda
+            e += g * self.wordThetaDict[targetWord]
+            self.wordThetaDict[targetWord] += g * w
 
         for i in range(1, self.window):
             if index + i < len(self.trainWordList):
@@ -84,9 +86,6 @@ class CBOW:
                 word = self.trainWordList[index - i]
                 if word in self.wordVecDict:
                     self.wordVecDict[word] = self.wordVecDict[word] + e
-
-    def calcVecLength(self, vec):
-        return np.sqrt(vec.dot(vec))
 
     def computeW(self, index):
         w = np.zeros(self.vecLength)
@@ -112,9 +111,6 @@ class CBOW:
         tempExp = np.exp((x / EXP_TABLE_SIZE * 2 - 1) * MAX_EXP)
         return tempExp / (tempExp + 1)
 
-    def buildTree(self):
-        self.tree = tree.HuffmanTree(self.wordPosiDict, self.vecLength)
-
     def buildWordList(self):
         self.trainWordList = self.sentence.split()
         for i in range(len(self.trainWordList)):
@@ -126,12 +122,16 @@ class CBOW:
             else:
                 self.wordPosiDict[word] = 1
         self.wordPosiDict = self.deleteMinWords()
+        self.wordPosiList = list(self.wordPosiDict.items())
 
         for key, value in self.wordPosiDict.items():
             self.train_words += value
 
         for word in self.wordPosiDict:
-            self.wordVecDict[word] = (np.random.rand(self.vecLength) - np.ones(self.vecLength) * 0.5) / self.vecLength;
+            self.wordVecDict[word] = (np.random.rand(self.vecLength) - np.ones(self.vecLength) * 0.5) / self.vecLength
+            self.wordThetaDict[word] = (np.random.rand(self.vecLength) - np.ones(self.vecLength) * 0.5) / self.vecLength
+
+        self.vocabSize = len(self.wordVecDict)
 
     def deleteMinWords(self):
         temp = sorted(self.wordPosiDict.items(), key = lambda x:x[1], reverse = True)
@@ -144,23 +144,22 @@ class CBOW:
             newDict[item[0]] = item[1]
         return newDict
 
-    def computeLoss(self):
-        index = 0
-        s = 0
-        for index in range(len(self.trainWordList)):
-            if self.trainWordList[index] in self.wordVecDict:
-                w = self.computeW(index)
-                if w is None:
-                    continue
-                word = self.trainWordList[index]
-                v = self.wordVecDict[word]
-                code = self.tree.wordCodeDict[word]
-                node = self.tree.root
-                for i in range(len(code)):
-                    q = (1 - int(code[i])) * np.log(self.sig(w.dot(node.value))) + (int(code[i])) * np.log(1 - self.sig(w.dot(node.value)))
-                    s = s + q
-                    if code[i] == '1':
-                        node = node.left
-                    else:
-                        node = node.right
-        return s
+    def initUnigramTable(self):
+        powSum = 0
+        for pair in self.wordPosiList:
+            powSum += pair[1] ** self.power
+        i = 0
+        dl = (self.wordPosiList[i][1] ** self.power) / powSum
+        a = 0
+        while True:
+            if a % 1000000 == 0:
+                print "[init gram]", a
+            self.table.append(i)
+            if float(a) / self.tableSize > dl:
+                i += 1
+                dl += (self.wordPosiList[i][1] ** self.power) / powSum
+            if i >= self.vocabSize:
+                i = self.vocabSize - 1
+            a += 1
+            if a >= self.tableSize:
+                break

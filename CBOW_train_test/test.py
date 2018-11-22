@@ -1,7 +1,6 @@
 import numpy as np
 
-size = 10
-maxNum = 10
+size = 6
 
 f = open("../data/CBOW" + str(size) + "M.model", "r")
 
@@ -23,7 +22,6 @@ for i in range(1, len(lines)):
 for key in wordVecDict:
     len = np.sqrt(wordVecDict[key].dot(wordVecDict[key]))
     wordVecDict[key] /= len
-    print wordVecDict[key]
 
 
 f2 = open("../data/analogy.in")
@@ -54,7 +52,7 @@ for line in lines:
             aimLen = np.sqrt(aimVec.dot(aimVec))
             aimVec /= aimLen
             maxCos = -1
-            maxWords = [("", -1) for i in range(maxNum)]
+            maxWord = ""
             for key, value in wordVecDict.items():
                 if key == lineList[0]:
                     continue

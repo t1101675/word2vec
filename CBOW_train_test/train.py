@@ -1,4 +1,5 @@
 import lib.CBOW as CBOW
+import lib.CBOW_neg as CBOW_neg
 import os
 
 size = 6
@@ -8,7 +9,8 @@ f = open("../data/" + str(size) + "M_train.in", 'r')
 sentence = f.read()
 f.close()
 
-model = CBOW.CBOW(sentence)
+print "OK"
+model = CBOW_neg.CBOW(sentence)
 
 # for word in model.wordVecDict:
 #     print word + ": ", model.wordVecDict[word]
